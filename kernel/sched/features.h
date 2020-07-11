@@ -69,7 +69,7 @@ SCHED_FEAT(HRTICK_DL, false)
 /*
  * Decrement CPU capacity based on time not spent running tasks
  */
-SCHED_FEAT(NONTASK_CAPACITY, true)
+SCHED_FEAT(NONTASK_CAPACITY, false)
 
 #ifdef CONFIG_PREEMPT_RT
 SCHED_FEAT(TTWU_QUEUE, false)
