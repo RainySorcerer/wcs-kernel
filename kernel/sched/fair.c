@@ -10219,14 +10219,15 @@ group_type group_classify(unsigned int imbalance_pct,
 	if (sgs->group_asym_packing)
 		return group_asym_packing;
 
-	if (sgs->group_smt_balance)
-		return group_smt_balance;
-
 	if (sgs->group_misfit_task_load)
 		return group_misfit_task;
 
-	if (!group_has_capacity(imbalance_pct, sgs))
-		return group_fully_busy;
+	if (!group_has_capacity(imbalance_pct, sgs)) {
+		if (sgs->group_smt_balance)
+			return group_smt_balance;
+		else
+			return group_fully_busy;
+	}
 
 	return group_has_spare;
 }
@@ -10328,6 +10329,11 @@ static inline long sibling_imbalance(struct lb_env *env,
 	long imbalance;
 
 	if (!env->idle || !busiest->sum_nr_running)
+		return 0;
+
+	/* Do not pull tasks off preferred group with spare capacity */
+	if (busiest->group_type == group_has_spare &&
+	    sched_asym_prefer(sds->busiest->asym_prefer_cpu, env->dst_cpu))
 		return 0;
 
 	ncores_busiest = sds->busiest->cores;
@@ -11151,13 +11157,6 @@ static inline void calculate_imbalance(struct lb_env *env, struct sd_lb_stats *s
 		 */
 		env->migration_type = migrate_task;
 		env->imbalance = busiest->sum_h_nr_running;
-		return;
-	}
-
-	if (busiest->group_type == group_smt_balance) {
-		/* Reduce number of tasks sharing CPU capacity */
-		env->migration_type = migrate_task;
-		env->imbalance = 1;
 		return;
 	}
 
