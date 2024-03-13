@@ -7878,16 +7878,19 @@ static int select_idle_sibling(struct task_struct *p, int prev, int target)
 	 */
 	lockdep_assert_irqs_disabled();
 
-	if ((available_idle_cpu(target) || sched_idle_cpu(target)) &&
-	    asym_fits_cpu(task_util, util_min, util_max, target))
+	if (cpumask_test_cpu(target, p->cpus_ptr) &&
+		(available_idle_cpu(target) || sched_idle_cpu(target)) &&
+		asym_fits_cpu(task_util, util_min, util_max, target))
 		return target;
 
 	/*
 	 * If the previous CPU is cache affine and idle, don't be stupid:
 	 */
-	if (prev != target && cpus_share_cache(prev, target) &&
-	    (available_idle_cpu(prev) || sched_idle_cpu(prev)) &&
-	    asym_fits_cpu(task_util, util_min, util_max, prev)) {
+	if (cpumask_test_cpu(prev, p->cpus_ptr) &&
+		prev != target &&
+		cpus_share_cache(prev, target) &&
+		(available_idle_cpu(prev) || sched_idle_cpu(prev)) &&
+		asym_fits_cpu(task_util, util_min, util_max, prev)) {
 
 		if (!static_branch_unlikely(&sched_cluster_active) ||
 		    cpus_share_resources(prev, target))
