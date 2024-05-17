@@ -56,7 +56,7 @@ static void wacom_wac_queue_insert(struct hid_device *hdev,
 
 	while (kfifo_avail(fifo) < size) {
 		if (!warned)
-			hid_warn(hdev, "%s: kfifo has filled, starting to drop events\n", __func__);
+			// hid_warn(hdev, "%s: kfifo has filled, starting to drop events\n", __func__);
 		warned = true;
 
 		kfifo_skip(fifo);

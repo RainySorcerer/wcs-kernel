@@ -69,8 +69,8 @@ void wacom_idleprox_timeout(struct timer_list *list)
 	if (!wacom_wac->hid_data.sense_state) {
 		return;
 	}
-
-	hid_warn(wacom->hdev, "%s: tool appears to be hung in-prox. forcing it out.\n", __func__);
+	//  this warning is stupidly spammy on my lenevo flex - silence it completely
+	// hid_warn(wacom->hdev, "%s: tool appears to be hung in-prox. forcing it out.\n", __func__);
 	wacom_force_proxout(wacom_wac);
 }
 
