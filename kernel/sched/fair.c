@@ -7305,7 +7305,11 @@ static unsigned long capacity_of(int cpu)
 	return cpu_rq(cpu)->cpu_capacity;
 }
 
+#ifdef CONFIG_SCHED_SSS
+void record_wakee(struct task_struct *p)
+#else
 static void record_wakee(struct task_struct *p)
+#endif
 {
 	/*
 	 * Only decay a single time; tasks that have less then 1 wakeup per
@@ -7339,7 +7343,11 @@ static void record_wakee(struct task_struct *p)
  * whatever is irrelevant, spread criteria is apparent partner count exceeds
  * socket size.
  */
+#ifdef CONFIG_SCHED_SSS
+int wake_wide(struct task_struct *p)
+#else
 static int wake_wide(struct task_struct *p)
+#endif
 {
 	unsigned int master = current->wakee_flips;
 	unsigned int slave = p->wakee_flips;
@@ -13650,6 +13658,15 @@ static unsigned int get_rr_interval_fair(struct rq *rq, struct task_struct *task
 
 	return rr_interval;
 }
+
+#ifdef CONFIG_SCHED_SSS
+static inline void *select_task_rq_fair_dummy(void)
+{
+	return (void *)select_task_rq_fair;
+}
+
+#define select_task_rq_fair sss_select_task_rq_fair
+#endif
 
 /*
  * All the scheduling class methods:

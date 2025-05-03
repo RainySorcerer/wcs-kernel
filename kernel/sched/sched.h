@@ -3993,4 +3993,15 @@ static inline int task_running_nice(struct task_struct *p)
 	return (task_nice(p) > 0);
 }
 #endif /* !CONFIG_SCHED_ALT */
+
+#ifdef CONFIG_SCHED_SSS
+int sss_select_task_rq_fair(struct task_struct *p, int prev_cpu, int wake_flags);
+int sss_select_task_rq_rt(struct task_struct *p, int prev_cpu, int wake_flags);
+void sss_rt_bank_inc(int cpu, int normal_prio);
+void sss_rt_bank_dec(int cpu, int normal_prio);
+void __init sched_sss_init(void);
+int wake_wide(struct task_struct *p);
+void record_wakee(struct task_struct *p);
+#endif
+
 #endif /* _KERNEL_SCHED_SCHED_H */

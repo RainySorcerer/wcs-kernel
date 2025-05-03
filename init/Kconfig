@@ -1477,6 +1477,30 @@ config SCHED_AUTOGROUP
 	  desktop applications.  Task group autogeneration is currently based
 	  upon task session.
 
+config SCHED_SSS
+	bool "Simple Superset Scheduler"
+	depends on SMP && (NR_CPUS <= 32)
+	depends on SCHED_SMT
+	depends on !CPUMASK_OFFSTACK
+	depends on !NUMA
+	depends on !SCHED_CORE
+	help
+	  SSS computes composite load metric (CFS + RT/DL utilization) for each
+	  candidate CPU and selects the one with the lowest aggregated load while
+	  incorporating SMT and LLC affinity heuristics for improved cache reuse.
+	  For RT path, SSS uses 'accumulated priority as load', which is tracked
+	  via enqueue/dequeue hooks and stored in per-CPU counters which will be
+	  used later by RT runqueue selector.
+
+	  Unlike the stock algorithm which relies on sched domain hierarchy to
+	  determine the scope of its CPU scan, SSS performs a global scan over
+	  all eligible CPUs. This wide scan introduces per-CPU polling overhead
+	  that grows linearly with the number of threads O(n). Hence, SSS is not
+	  suitable for large-scale configuration such as multi-socket, NUMA,
+	  server-class, or a processor with thread count higher than 32.
+
+	  If targeting typical desktop system, say Y. Otherwise, say N.
+
 config RELAY
 	bool "Kernel->user space relay support (formerly relayfs)"
 	select IRQ_WORK
