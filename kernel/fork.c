@@ -1908,6 +1908,10 @@ static bool need_futex_hash_allocate_default(u64 clone_flags)
 	return true;
 }
 
+#ifdef CONFIG_SCHED_BORE
+void sched_clone_bore(struct task_struct *p, struct task_struct *parent, u64 clone_flags, u64 now);
+#endif
+
 /*
  * This creates a new process as a copy of the old one,
  * but does not actually start it yet.
@@ -2323,6 +2327,11 @@ __latent_entropy struct task_struct *copy_process(
 	 * Need tasklist lock for parent etc handling!
 	 */
 	write_lock_irq(&tasklist_lock);
+
+#ifdef CONFIG_SCHED_BORE
+	if (likely(p->pid))
+		sched_clone_bore(p, current, clone_flags, p->start_time);
+#endif
 
 	/* CLONE_PARENT re-uses the old parent */
 	if (clone_flags & (CLONE_PARENT|CLONE_THREAD)) {

@@ -712,7 +712,11 @@ static void update_entity_lag(struct cfs_rq *cfs_rq, struct sched_entity *se)
 	WARN_ON_ONCE(!se->on_rq);
 
 	vlag = avg_vruntime(cfs_rq) - se->vruntime;
+#ifdef CONFIG_SCHED_BORE
+	limit = calc_delta_fair(max_t(u64, se->slice, TICK_NSEC), se);
+#else
 	limit = calc_delta_fair(max_t(u64, 2*se->slice, TICK_NSEC), se);
+#endif
 
 	se->vlag = clamp(vlag, -limit, limit);
 }
@@ -952,7 +956,11 @@ static struct sched_entity *pick_eevdf(struct cfs_rq *cfs_rq)
 	if (curr && (!curr->on_rq || !entity_eligible(cfs_rq, curr)))
 		curr = NULL;
 
+#ifdef CONFIG_SCHED_BORE
+	if ((cfs_rq->nr_queued < 3) && curr && protect_slice(curr))
+#else
 	if (sched_feat(RUN_TO_PARITY) && curr && protect_slice(curr))
+#endif
 		return curr;
 
 	/* Pick the leftmost entity if it's eligible */
@@ -1250,6 +1258,9 @@ static void update_curr(struct cfs_rq *cfs_rq)
 	if (unlikely(delta_exec <= 0))
 		return;
 
+#ifdef CONFIG_SCHED_BORE
+	update_curr_bore(delta_exec, curr);
+#endif
 	curr->vruntime += calc_delta_fair(delta_exec, curr);
 	resched = update_deadline(cfs_rq, curr);
 	update_min_vruntime(cfs_rq);
@@ -3809,14 +3820,24 @@ dequeue_load_avg(struct cfs_rq *cfs_rq, struct sched_entity *se) { }
 
 static void place_entity(struct cfs_rq *cfs_rq, struct sched_entity *se, int flags);
 
+#ifdef CONFIG_SCHED_BORE
+void reweight_entity(struct cfs_rq *cfs_rq, struct sched_entity *se,
+		     unsigned long weight, bool no_update_curr)
+#else
 static void reweight_entity(struct cfs_rq *cfs_rq, struct sched_entity *se,
 			    unsigned long weight)
+#endif
 {
 	bool curr = cfs_rq->curr == se;
 
 	if (se->on_rq) {
 		/* commit outstanding execution time */
+#ifdef CONFIG_SCHED_BORE
+		if (!no_update_curr)
+			update_curr(cfs_rq);
+#else
 		update_curr(cfs_rq);
+#endif
 		update_entity_lag(cfs_rq, se);
 		se->deadline -= se->vruntime;
 		se->rel_deadline = 1;
@@ -3871,7 +3892,11 @@ static void reweight_task_fair(struct rq *rq, struct task_struct *p,
 	struct cfs_rq *cfs_rq = cfs_rq_of(se);
 	struct load_weight *load = &se->load;
 
+#ifdef CONFIG_SCHED_BORE
+	reweight_entity(cfs_rq, se, lw->weight, false);
+#else
 	reweight_entity(cfs_rq, se, lw->weight);
+#endif
 	load->inv_weight = lw->inv_weight;
 }
 
@@ -4012,7 +4037,11 @@ static void update_cfs_group(struct sched_entity *se)
 	shares = calc_group_shares(gcfs_rq);
 #endif
 	if (unlikely(se->load.weight != shares))
+#ifdef CONFIG_SCHED_BORE
+		reweight_entity(cfs_rq_of(se), se, shares, false);
+#else
 		reweight_entity(cfs_rq_of(se), se, shares);
+#endif
 }
 
 #else /* CONFIG_FAIR_GROUP_SCHED */
@@ -5316,7 +5345,12 @@ place_entity(struct cfs_rq *cfs_rq, struct sched_entity *se, int flags)
 	 * on average, halfway through their slice, as such start tasks
 	 * off with half a slice to ease into the competition.
 	 */
+#ifdef CONFIG_SCHED_BORE
+	if (((flags & ENQUEUE_WAKEUP) && !se->burst_penalty) ||
+	    (flags & ENQUEUE_INITIAL))
+#else
 	if (sched_feat(PLACE_DEADLINE_INITIAL) && (flags & ENQUEUE_INITIAL))
+#endif
 		vslice /= 2;
 
 	/*
@@ -7205,6 +7239,15 @@ static bool dequeue_task_fair(struct rq *rq, struct task_struct *p, int flags)
 		util_est_dequeue(&rq->cfs, p);
 
 	util_est_update(&rq->cfs, p, flags & DEQUEUE_SLEEP);
+
+#ifdef CONFIG_SCHED_BORE
+	if ((flags & DEQUEUE_SLEEP) && !p->se.my_q) {
+		if (rq->cfs.curr == &p->se)
+			update_curr(&rq->cfs);
+		restart_burst(&p->se);
+	}
+#endif
+
 	if (dequeue_entities(rq, &p->se, flags) < 0)
 		return false;
 
@@ -9047,16 +9090,25 @@ static void yield_task_fair(struct rq *rq)
 	/*
 	 * Are we the only task in the tree?
 	 */
+#ifndef CONFIG_SCHED_BORE
 	if (unlikely(rq->nr_running == 1))
 		return;
 
 	clear_buddies(cfs_rq, se);
+#endif
 
 	update_rq_clock(rq);
 	/*
 	 * Update run-time statistics of the 'current'.
 	 */
 	update_curr(cfs_rq);
+#ifdef CONFIG_SCHED_BORE
+	restart_burst_rescale_deadline(se);
+	if (unlikely(rq->nr_running == 1))
+		return;
+
+	clear_buddies(cfs_rq, se);
+#endif
 	/*
 	 * Tell update_rq_clock() that we've just updated,
 	 * so we don't do microscopic update in schedule()
@@ -13176,6 +13228,9 @@ static void task_tick_fair(struct rq *rq, struct task_struct *curr, int queued)
 static void task_fork_fair(struct task_struct *p)
 {
 	set_task_max_allowed_capacity(p);
+#ifdef CONFIG_SCHED_BORE
+	update_burst_score(&p->se);
+#endif
 }
 
 /*
@@ -13292,6 +13347,10 @@ static void switched_from_fair(struct rq *rq, struct task_struct *p)
 static void switched_to_fair(struct rq *rq, struct task_struct *p)
 {
 	WARN_ON_ONCE(p->se.sched_delayed);
+
+#ifdef CONFIG_SCHED_BORE
+	reset_task_bore(p);
+#endif
 
 	attach_task_cfs_rq(p);
 

@@ -8527,6 +8527,10 @@ void __init sched_init(void)
 	sched_sss_init();
 #endif
 
+#ifdef CONFIG_SCHED_BORE
+	sched_bore_init();
+#endif
+
 	wait_bit_init();
 
 #ifdef CONFIG_FAIR_GROUP_SCHED

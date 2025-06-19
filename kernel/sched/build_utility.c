@@ -115,3 +115,7 @@
 #ifdef CONFIG_SCHED_SSS
 # include "sss.c"
 #endif
+
+#ifdef CONFIG_SCHED_BORE
+# include "bore.c"
+#endif

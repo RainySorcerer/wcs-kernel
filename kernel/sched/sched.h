@@ -4004,4 +4004,17 @@ int wake_wide(struct task_struct *p);
 void record_wakee(struct task_struct *p);
 #endif
 
+#ifdef CONFIG_SCHED_BORE
+void update_burst_score(struct sched_entity *se);
+void update_curr_bore(u64 delta_exec, struct sched_entity *se);
+void restart_burst(struct sched_entity *se);
+void restart_burst_rescale_deadline(struct sched_entity *se);
+void sched_clone_bore(struct task_struct *p, struct task_struct *parent,
+		      u64 clone_flags, u64 now);
+void reset_task_bore(struct task_struct *p);
+void reweight_entity(struct cfs_rq *cfs_rq, struct sched_entity *se,
+		     unsigned long weight, bool no_update_curr);
+void __init sched_bore_init(void);
+#endif
+
 #endif /* _KERNEL_SCHED_SCHED_H */
