@@ -77,8 +77,8 @@ unsigned int sysctl_sched_tunable_scaling = SCHED_TUNABLESCALING_LOG;
  * (default: 0.70 msec * (1 + ilog(ncpus)), units: nanoseconds)
  */
 #ifdef CONFIG_ZEN_INTERACTIVE
-unsigned int sysctl_sched_base_slice			= 400000ULL;
-static unsigned int normalized_sysctl_sched_base_slice	= 400000ULL;
+unsigned int sysctl_sched_base_slice			= 350000ULL;
+static unsigned int normalized_sysctl_sched_base_slice	= 350000ULL;
 #else
 unsigned int sysctl_sched_base_slice			= 700000ULL;
 static unsigned int normalized_sysctl_sched_base_slice	= 700000ULL;
