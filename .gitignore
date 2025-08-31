@@ -183,3 +183,7 @@ sphinx_*/
 
 # Rust analyzer configuration
 /rust-project.json
+
+# Ignore build stuff
+build.sh
+regen.sh
